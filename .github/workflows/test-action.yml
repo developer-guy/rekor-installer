@@ -1,0 +1,40 @@
+name: test-rekor-cli
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  test_rekor-cli_action:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: none
+      checks: none
+      contents: none
+      deployments: none
+      issues: none
+      packages: none
+      pull-requests: none
+      repository-projects: none
+      security-events: none
+      statuses: none
+    name: Install Rekor CLI and test presence in path
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@main
+      with:
+        cosign-release: 'v1.2.1'
+    - name: Install Rekor CLI
+      uses: ./
+    - name: Check install!
+      run: rekor-cli version
+    - name: Check root directory
+      run: |
+        if [[ $(git diff --stat) != '' ]]; then
+          echo 'should be clean'
+          exit 1
+        else
+          exit 0
+        fi

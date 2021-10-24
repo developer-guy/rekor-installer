@@ -1,0 +1,37 @@
+# action.yml
+name: install-rekor-cli
+description: 'Install Rekor CLI and put it on your path'
+branding:
+  icon: 'package'
+  color: 'blue'
+# This is pinned to the last major release, we have to bump it for each action version.
+inputs:
+  rekor-cli-release:
+    description: 'Rekor CLI release version to use in the actions.'
+    required: false
+    default: 'v0.3.0'
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        trap "popd" EXIT
+        
+        mkdir -p $HOME/.rekor-cli
+        pushd $HOME/.rekor-cli
+        
+        bootstrap_version='v0.3.0'
+        expected_bootstrap_version_digest='ce9a7c82f32194995888758cf107ef0cc52e0b8cdce73b4240658ee9e73783cb'
+        curl -L https://github.com/sigstore/rekor/releases/download/${bootstrap_version}/rekor-cli-linux-amd64 -o rekor-cli_${{ inputs.rekor-cli-release }}
+        chmod +x rekor-cli_${{ inputs.rekor-cli-release }}
+        shaBootstrap=$(sha256sum rekor-cli_${{ inputs.rekor-cli-release }} | cut -d' ' -f1);
+        if [[ $shaBootstrap != ${expected_bootstrap_version_digest} ]]; then exit 1; fi
+        curl -LO https://github.com/sigstore/rekor/releases/download/${{ inputs.rekor-cli-release }}/rekor-cli-linux-amd64_signature.sig
+        curl -LO https://github.com/sigstore/rekor/releases/download/${{ inputs.rekor-cli-release }}/rekor-cli-linux-amd64_cert.pem
+        openssl x509 -pubkey -noout -in rekor-cli-linux-amd64_cert.pem > rekor-cli-linux-amd64_cert_public.pem
+        openssl dgst -sha256 -verify rekor-cli-linux-amd64_cert_public.pem -signature rekor-cli-linux-amd64_signature.sig rekor-cli_${{ inputs.rekor-cli-release }}
+        if [[ $? != 0 ]]; then exit 1; fi
+        mv rekor-cli_${{ inputs.rekor-cli-release }} rekor-cli
+        chmod +x rekor-cli
+      shell: bash
+    - run: echo "$HOME/.rekor-cli" >> $GITHUB_PATH
+      shell: bash
